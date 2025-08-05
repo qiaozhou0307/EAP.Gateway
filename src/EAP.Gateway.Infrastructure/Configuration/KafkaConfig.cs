@@ -1,80 +1,49 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace EAP.Gateway.Infrastructure.Configuration;
 
 /// <summary>
-/// Kafka配置类
+/// Kafka配置
 /// </summary>
 public class KafkaConfig
 {
-    /// <summary>
-    /// Kafka集群地址
-    /// </summary>
-    [Required]
-    public string BootstrapServers { get; set; } = "localhost:9092";
+    public const string SectionName = "Kafka";
 
-    /// <summary>
-    /// 追踪数据主题
-    /// </summary>
-    public string TraceDataTopic { get; set; } = "eap.trace_data";
+    public string BootstrapServers { get; set; } = string.Empty;
+    public string ClientId { get; set; } = "EAP.Gateway";
+    public bool EnableAutoOffsetStore { get; set; } = true;
+    public string SecurityProtocol { get; set; } = "PlainText";
+    public KafkaTopics Topics { get; set; } = new();
+    public KafkaProducerConfig ProducerConfig { get; set; } = new();
 
-    /// <summary>
-    /// 设备事件主题
-    /// </summary>
-    public string EquipmentEventsTopic { get; set; } = "eap.equipment_events";
+    public (bool IsValid, IEnumerable<string> Errors) Validate()
+    {
+        var errors = new List<string>();
 
-    /// <summary>
-    /// 报警事件主题
-    /// </summary>
-    public string AlarmEventsTopic { get; set; } = "eap.alarm_events";
+        if (string.IsNullOrWhiteSpace(BootstrapServers))
+            errors.Add("BootstrapServers is required");
 
-    /// <summary>
-    /// 设备状态变更主题
-    /// </summary>
-    public string DeviceStatusTopic { get; set; } = "eap.device_status";
+        if (string.IsNullOrWhiteSpace(ClientId))
+            errors.Add("ClientId is required");
 
-    /// <summary>
-    /// 数据变量主题
-    /// </summary>
-    public string DataVariablesTopic { get; set; } = "eap.data_variables";
+        return (errors.Count == 0, errors);
+    }
+}
 
-    /// <summary>
-    /// 远程命令结果主题
-    /// </summary>
-    public string CommandResultsTopic { get; set; } = "eap.command_results";
+public class KafkaTopics
+{
+    public string EquipmentData { get; set; } = "eap.equipment.data";
+    public string AlarmEvents { get; set; } = "eap.alarm.events";
+    public string CheckData { get; set; } = "eap.check.data";
+    public string GoldenSampleData { get; set; } = "eap.golden.sample.data";
+    public string YieldData { get; set; } = "eap.yield.data";
+}
 
-    /// <summary>
-    /// 生产者超时时间（毫秒）
-    /// </summary>
-    public int ProducerTimeoutMs { get; set; } = 30000;
-
-    /// <summary>
-    /// 最大重试次数
-    /// </summary>
-    public int MaxRetries { get; set; } = 3;
-
-    /// <summary>
-    /// 批量发送大小
-    /// </summary>
-    public int BatchSize { get; set; } = 100;
-
-    /// <summary>
-    /// 启用压缩
-    /// </summary>
-    public bool EnableCompression { get; set; } = true;
-
-    /// <summary>
-    /// 压缩类型
-    /// </summary>
-    public string CompressionType { get; set; } = "lz4";
-
-    /// <summary>
-    /// 启用幂等性
-    /// </summary>
+public class KafkaProducerConfig
+{
     public bool EnableIdempotence { get; set; } = true;
-
-    /// <summary>
-    /// 确认模式
-    /// </summary>
-    public string Acks { get; set; } = "all";
+    public int RetryBackoffMs { get; set; } = 100;
+    public int MessageTimeoutMs { get; set; } = 30000;
+    public int RequestTimeoutMs { get; set; } = 30000;
+    public int BatchSize { get; set; } = 16384;
+    public int LingerMs { get; set; } = 5;
+    public string CompressionType { get; set; } = "Gzip";
 }

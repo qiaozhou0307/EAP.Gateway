@@ -54,7 +54,6 @@
 
   <ItemGroup>
     <Folder Include="Persistence\Migrations\" />
-    <Folder Include="Messaging\RabbitMQ\" />
     <Folder Include="Communications\Protocols\" />
     <Folder Include="Logging\" />
     <Folder Include="Monitoring\HealthChecks\" />

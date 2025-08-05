@@ -52,4 +52,15 @@ public class DeviceServiceStatusChangedEventArgs : EventArgs
         Reason = reason;
         Exception = exception;
     }
+
+    public enum DeviceServiceStatus
+    {
+        NotInitialized = 0,
+        Initializing = 1,
+        Starting = 2,
+        Started = 3,
+        Stopping = 4,
+        Stopped = 5,
+        Error = 6
+    }
 }

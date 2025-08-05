@@ -5,15 +5,6 @@ using Microsoft.Extensions.Logging;
 namespace EAP.Gateway.Infrastructure.Persistence;
 
 /// <summary>
-/// 数据库初始化器接口
-/// </summary>
-public interface IDatabaseInitializer
-{
-    Task InitializeAsync(CancellationToken cancellationToken = default);
-    Task SeedAsync(CancellationToken cancellationToken = default);
-}
-
-/// <summary>
 /// 数据库初始化器实现
 /// </summary>
 public class DatabaseInitializer : IDatabaseInitializer

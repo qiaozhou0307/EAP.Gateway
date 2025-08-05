@@ -4,7 +4,11 @@ using EAP.Gateway.Core.ValueObjects;
 
 namespace EAP.Gateway.Core.Services;
 
+/// <summary>
+/// SECS设备服务工厂接口
+/// </summary>
 public interface ISecsDeviceServiceFactory
 {
-    ISecsDeviceService CreateDeviceService(EquipmentId equipmentId, EquipmentConfiguration configuration);
+    ISecsDeviceService CreateDeviceService(EquipmentId equipmentId, DeviceConnectionConfig config);
+    void ReleaseDeviceService(EquipmentId equipmentId);
 }

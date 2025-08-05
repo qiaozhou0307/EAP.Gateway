@@ -5,16 +5,6 @@ using Microsoft.Extensions.Logging;
 
 namespace EAP.Gateway.Infrastructure.Persistence.Factories;
 
-/// <summary>
-/// DbContext作用域工厂 - 为后台服务提供DbContext访问
-/// </summary>
-public interface IDbContextScopeFactory
-{
-    Task<T> ExecuteAsync<T>(Func<EapGatewayDbContext, Task<T>> operation);
-    Task ExecuteAsync(Func<EapGatewayDbContext, Task> operation);
-    Task<T> ExecuteInTransactionAsync<T>(Func<EapGatewayDbContext, Task<T>> operation);
-}
-
 public class DbContextScopeFactory : IDbContextScopeFactory
 {
     private readonly IDbContextFactory<EapGatewayDbContext> _contextFactory;

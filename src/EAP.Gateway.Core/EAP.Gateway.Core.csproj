@@ -13,7 +13,6 @@
   </ItemGroup>
   
   <ItemGroup>
-    <Folder Include="Aggregates\MessageAggregate\" />
     <Folder Include="Aggregates\AlarmAggregate\" />
     <Folder Include="DomainServices\" />
     <Folder Include="Specifications\" />
