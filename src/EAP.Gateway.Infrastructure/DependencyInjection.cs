@@ -19,6 +19,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Secs4Net;
 using StackExchange.Redis;
+using Secs4NetOptions = Secs4Net.SecsGemOptions;
 
 namespace EAP.Gateway.Infrastructure;
 
@@ -211,7 +212,7 @@ public static class DependencyInjection
     private static void AddSecsGemServices(IServiceCollection services, IConfiguration configuration)
     {
         // 配置选项
-        services.Configure<SecsGemOptions>(configuration.GetSection("SecsGem"));
+        services.Configure<EapSecsGemOptions>(configuration.GetSection("SecsGem"));
 
         // 工厂服务注册为单例 - 用于创建设备服务实例
         services.AddSingleton<ISecsDeviceServiceFactory, SecsDeviceServiceFactory>();

@@ -6,10 +6,12 @@ using EAP.Gateway.Core.Events.Equipment;
 using EAP.Gateway.Core.Events.Message;
 using EAP.Gateway.Core.ValueObjects;
 using EAP.Gateway.Infrastructure.Communications.SecsGem.Events;
+using EAP.Gateway.Infrastructure.Configuration;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Secs4Net;
+using Secs4NetOptions = Secs4Net.SecsGemOptions;
 
 namespace EAP.Gateway.Infrastructure.Communications.SecsGem;
 
@@ -21,6 +23,7 @@ public class HsmsClient : IHsmsClient
 {
     private readonly EquipmentId _equipmentId;
     private readonly EquipmentConfiguration _configuration;
+    private readonly EapSecsGemOptions _eapOptions; // ✅ 使用重命名后的配置类
     private readonly ILogger<HsmsClient> _logger;
     private readonly IMediator _mediator;
     private readonly SemaphoreSlim _connectionSemaphore = new(1, 1);
@@ -110,8 +113,7 @@ public class HsmsClient : IHsmsClient
             _logger.LogInformation("开始连接设备 {EquipmentId} [端点: {Endpoint}]", _equipmentId, _configuration.Endpoint);
 
             // 根据 EquipmentConfiguration 的实际结构，修复配置映射：
-
-            var secsGemOptions = new Secs4Net.SecsGemOptions
+            var secsGemOptions = new Secs4NetOptions
             {
                 IpAddress = _configuration.Endpoint.IpAddress,
                 Port = _configuration.Endpoint.Port,

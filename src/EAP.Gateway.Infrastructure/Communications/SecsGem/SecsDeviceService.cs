@@ -7,6 +7,7 @@ using EAP.Gateway.Core.Events.Alarm;
 using EAP.Gateway.Core.Events.Equipment;
 using EAP.Gateway.Core.Models;
 using EAP.Gateway.Core.Repositories;
+using EAP.Gateway.Core.Services;
 using EAP.Gateway.Core.ValueObjects;
 using EAP.Gateway.Infrastructure.Communications.SecsGem.Events;
 using MediatR;

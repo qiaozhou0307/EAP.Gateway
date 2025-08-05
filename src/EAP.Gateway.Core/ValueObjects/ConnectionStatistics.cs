@@ -49,7 +49,8 @@ public class ConnectionStatistics : ValueObject
         double connectionRate,
         double successRate,
         TimeSpan uptime,
-        DateTime statisticsTime)
+        DateTime statisticsTime,
+        int messagesSent)
     {
         TotalDevices = Math.Max(0, totalDevices);
         ConnectedDevices = Math.Max(0, connectedDevices);

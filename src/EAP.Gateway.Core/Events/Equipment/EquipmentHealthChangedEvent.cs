@@ -1,5 +1,6 @@
 using EAP.Gateway.Core.Aggregates.EquipmentAggregate;
 using EAP.Gateway.Core.Events.Common;
+using EAP.Gateway.Core.ValueObjects;
 
 namespace EAP.Gateway.Core.Events.Equipment;
 

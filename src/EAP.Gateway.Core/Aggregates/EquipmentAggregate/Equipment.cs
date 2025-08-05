@@ -471,66 +471,6 @@ public class Equipment : AggregateRoot<EquipmentId>
     }
 
     /// <summary>
-    /// 验证状态转换合法性
-    /// </summary>
-    private bool IsValidStateTransition(EquipmentState fromState, EquipmentState toState)
-    {
-        // UNKNOWN状态可以转换到任何状态
-        if (fromState == EquipmentState.UNKNOWN)
-            return true;
-
-        // 基本的状态转换规则
-        return (fromState, toState) switch
-        {
-            // 从IDLE可以转换到大部分状态
-            (EquipmentState.IDLE, _) => toState != EquipmentState.UNKNOWN,
-
-            // 从SETUP可以转换到执行或回到空闲
-            (EquipmentState.SETUP, EquipmentState.EXECUTING or EquipmentState.IDLE or EquipmentState.FAULT or EquipmentState.ALARM) => true,
-
-            // 从EXECUTING可以转换到暂停、完成（空闲）或故障
-            (EquipmentState.EXECUTING, EquipmentState.PAUSE or EquipmentState.IDLE or EquipmentState.FAULT or EquipmentState.ALARM) => true,
-
-            // 从PAUSE可以转换到继续执行或停止
-            (EquipmentState.PAUSE, EquipmentState.EXECUTING or EquipmentState.IDLE or EquipmentState.FAULT) => true,
-
-            // 从DOWN可以转换到维护或恢复到空闲
-            (EquipmentState.DOWN, EquipmentState.MAINTENANCE or EquipmentState.IDLE) => true,
-
-            // 从MAINTENANCE可以转换到空闲
-            (EquipmentState.MAINTENANCE, EquipmentState.IDLE) => true,
-
-            // 从FAULT可以转换到维护或恢复到空闲
-            (EquipmentState.FAULT, EquipmentState.MAINTENANCE or EquipmentState.IDLE or EquipmentState.DOWN) => true,
-
-            // 从ALARM可以转换回之前的状态或故障
-            (EquipmentState.ALARM, _) => toState != EquipmentState.UNKNOWN,
-
-            _ => false
-        };
-    }
-
-    /// <summary>
-    /// 确定状态变化类型
-    /// </summary>
-    private StateChangeType DetermineChangeType(EquipmentState previousState, EquipmentState newState, string? changedBy)
-    {
-        if (newState == EquipmentState.FAULT)
-            return StateChangeType.Error;
-
-        if (newState == EquipmentState.ALARM)
-            return StateChangeType.AlarmTriggered;
-
-        if (newState == EquipmentState.MAINTENANCE || previousState == EquipmentState.MAINTENANCE)
-            return StateChangeType.Maintenance;
-
-        if (!string.IsNullOrEmpty(changedBy))
-            return StateChangeType.OperatorTriggered;
-
-        return StateChangeType.Automatic;
-    }
-
-    /// <summary>
     /// 处理严重状态变化
     /// </summary>
     private void HandleCriticalStateChange(EquipmentState previousState, EquipmentState newState, string? reason)

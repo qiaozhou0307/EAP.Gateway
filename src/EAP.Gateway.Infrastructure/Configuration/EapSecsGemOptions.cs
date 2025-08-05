@@ -1,9 +1,9 @@
 namespace EAP.Gateway.Infrastructure.Configuration;
 
 /// <summary>
-/// SECS/GEM配置选项
+/// EAP SECS/GEM配置选项（重命名以避免与Secs4Net冲突）
 /// </summary>
-public class SecsGemOptions
+public class EapSecsGemOptions
 {
     public const string SectionName = "SecsGem";
 

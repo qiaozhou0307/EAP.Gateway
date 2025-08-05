@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Secs4Net;
 using Serilog;
+using Secs4NetOptions = Secs4Net.SecsGemOptions;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -52,7 +54,7 @@ static void ConfigureOptions(IServiceCollection services, IConfiguration configu
 {
     // 基础设施配置
     services.Configure<ConnectionManagerOptions>(configuration.GetSection("ConnectionManager"));
-    services.Configure<SecsGemOptions>(configuration.GetSection("SecsGem"));
+    services.Configure<EapSecsGemOptions>(configuration.GetSection("SecsGem"));
     services.Configure<KafkaConfig>(configuration.GetSection("Kafka"));
     services.Configure<RabbitMQConfig>(configuration.GetSection("RabbitMQ"));
     services.Configure<DeviceMonitoringOptions>(configuration.GetSection(DeviceMonitoringOptions.SectionName));
