@@ -1,7 +1,6 @@
-// src/EAP.Gateway.Infrastructure/DependencyInjection.cs
+using EAP.Gateway.Core.Repositories;
 using EAP.Gateway.Core.Aggregates.EquipmentAggregate;
 using EAP.Gateway.Core.Models;
-using EAP.Gateway.Core.Repositories;
 using EAP.Gateway.Core.Services;
 using EAP.Gateway.Infrastructure.Caching;
 using EAP.Gateway.Infrastructure.Communications.SecsGem;
@@ -99,9 +98,44 @@ public static class DependencyInjection
         options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
     }
 
-    // src/EAP.Gateway.Infrastructure/DependencyInjection.cs (修复缓存部分)
     /// <summary>
-    /// 修复：添加缓存服务 - 解决IRedisService重复定义问题
+    /// 修复：添加消息队列服务 - 解决接口重复定义问题
+    /// </summary>
+    private static void AddMessaging(IServiceCollection services, IConfiguration configuration)
+    {
+        // Kafka配置验证
+        var kafkaSection = configuration.GetSection("Kafka");
+        if (kafkaSection.Exists())
+        {
+            var kafkaConfig = kafkaSection.Get<KafkaConfig>();
+            if (kafkaConfig != null)
+            {
+                var (isValid, errors) = kafkaConfig.Validate();
+                if (!isValid)
+                {
+                    throw new InvalidOperationException($"Kafka配置无效: {string.Join(", ", errors)}");
+                }
+            }
+        }
+
+        services.Configure<KafkaConfig>(kafkaSection);
+
+        // ✅ 修复：明确使用Core层接口，Kafka生产者注册为单例
+        services.AddSingleton<IKafkaProducerService, KafkaProducerService>();
+
+        // RabbitMQ配置（如果需要）
+        var rabbitMQSection = configuration.GetSection("RabbitMQ");
+        if (rabbitMQSection.Exists())
+        {
+            services.Configure<RabbitMQConfig>(rabbitMQSection);
+
+            // ✅ 修复：明确使用Core层接口
+            services.AddSingleton<IRabbitMQService, RabbitMQService>();
+        }
+    }
+
+    /// <summary>
+    /// 修复：添加缓存服务 - 解决接口重复定义问题
     /// </summary>
     private static void AddCaching(IServiceCollection services, IConfiguration configuration)
     {
@@ -112,7 +146,7 @@ public static class DependencyInjection
             // 如果Redis未配置，使用内存缓存作为后备
             services.AddMemoryCache();
             services.AddScoped<IDeviceStatusCacheService, MemoryDeviceStatusCacheService>();
-            services.AddSingleton<Core.Repositories.IRedisService, NullRedisService>(); // ✅ 明确使用Core层接口
+            services.AddSingleton<IRedisService, NullRedisService>(); // ✅ 使用Core层接口
             return;
         }
 
@@ -151,8 +185,8 @@ public static class DependencyInjection
             options.InstanceName = "EapGateway";
         });
 
-        // ✅ 修复：明确使用Core层的IRedisService接口
-        services.AddSingleton<Core.Repositories.IRedisService, RedisService>();
+        // ✅ 修复：明确使用Core层接口
+        services.AddSingleton<IRedisService, RedisService>();
         services.AddScoped<IDeviceStatusCacheService, DeviceStatusCacheService>();
 
         // 内存缓存作为二级缓存
@@ -169,40 +203,6 @@ public static class DependencyInjection
         services.AddScoped<IAlarmRepository, AlarmRepository>();
         services.AddScoped<IDataVariableRepository, DataVariableRepository>();
         services.AddScoped<IMessageRepository, MessageRepository>();
-    }
-
-    /// <summary>
-    /// 修复：添加消息队列服务 - 优化Kafka生产者生命周期
-    /// </summary>
-    private static void AddMessaging(IServiceCollection services, IConfiguration configuration)
-    {
-        // Kafka配置验证
-        var kafkaSection = configuration.GetSection("Kafka");
-        if (kafkaSection.Exists())
-        {
-            var kafkaConfig = kafkaSection.Get<KafkaConfig>();
-            if (kafkaConfig != null)
-            {
-                var (isValid, errors) = kafkaConfig.Validate();
-                if (!isValid)
-                {
-                    throw new InvalidOperationException($"Kafka配置无效: {string.Join(", ", errors)}");
-                }
-            }
-        }
-
-        services.Configure<KafkaConfig>(kafkaSection);
-
-        // Kafka生产者注册为单例 - 提高性能并避免频繁创建连接
-        services.AddSingleton<IKafkaProducerService, KafkaProducerService>();
-
-        // RabbitMQ配置（如果需要）
-        var rabbitMQSection = configuration.GetSection("RabbitMQ");
-        if (rabbitMQSection.Exists())
-        {
-            services.Configure<RabbitMQConfig>(rabbitMQSection);
-            services.AddSingleton<IRabbitMQService, RabbitMQService>();
-        }
     }
 
     /// <summary>
@@ -279,4 +279,7 @@ public static class DependencyInjection
             "device_connections",
             tags: new[] { "ready", "device" });
     }
+
+
+
 }

@@ -7,7 +7,7 @@ namespace EAP.Gateway.Infrastructure.Caching;
 /// 空Redis服务实现 - 当Redis不可用时的占位符
 /// 实现Core.Repositories.IRedisService接口
 /// </summary>
-public class NullRedisService : Core.Repositories.IRedisService
+public class NullRedisService : IRedisService
 {
     private readonly ILogger<NullRedisService> _logger;
 

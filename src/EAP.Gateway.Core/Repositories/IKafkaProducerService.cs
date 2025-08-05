@@ -48,4 +48,12 @@ public interface IKafkaProducerService
     /// <returns>发布是否成功</returns>
     Task<bool> PublishDeviceStatusAsync(string equipmentId, object statusData,
         CancellationToken cancellationToken = default);
+
+    // Infrastructure层基础方法 - 返回bool表示成功/失败
+    Task<bool> ProduceAsync<T>(string topic, T message, CancellationToken cancellationToken = default) where T : class;
+    Task<bool> ProduceAsync<T>(string topic, string key, T message, CancellationToken cancellationToken = default) where T : class;
+    Task FlushAsync(CancellationToken cancellationToken = default);
+
+    // 状态检查
+    bool IsConnected { get; }
 }
