@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <AssemblyName>EAP.Gateway.Api</AssemblyName>
+    <RootNamespace>EAP.Gateway.Api</RootNamespace>
+    <Description>EAP Gateway REST API服务</Description>
+    <UserSecretsId>eap-gateway-api-secrets</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\EAP.Gateway.Core\EAP.Gateway.Core.csproj" />
+    <ProjectReference Include="..\EAP.Gateway.Application\EAP.Gateway.Application.csproj" />
+    <ProjectReference Include="..\EAP.Gateway.Infrastructure\EAP.Gateway.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- API文档 -->
+    <PackageReference Include="Swashbuckle.AspNetCore" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Versioning" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Versioning.ApiExplorer" />
+    
+    <!-- 认证和授权 -->
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    
+    <!-- 验证 -->
+    <PackageReference Include="FluentValidation.AspNetCore" />
+    
+    <!-- 监控 -->
+    <PackageReference Include="prometheus-net.AspNetCore" />
+    <PackageReference Include="AspNetCore.HealthChecks.UI.Client" />
+    
+    <!-- 日志 -->
+    <PackageReference Include="Serilog.AspNetCore" />
+    <PackageReference Include="Serilog.Sinks.Console" />
+    
+    <!-- 映射 -->
+    <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Filters\" />
+    <Folder Include="Models\Responses\" />
+    <Folder Include="Models\Common\" />
+    <Folder Include="Configuration\" />
+  </ItemGroup>
+
+</Project>

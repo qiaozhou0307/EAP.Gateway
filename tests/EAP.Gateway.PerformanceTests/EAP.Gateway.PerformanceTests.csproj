@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>EAP.Gateway.PerformanceTests</AssemblyName>
+    <RootNamespace>EAP.Gateway.PerformanceTests</RootNamespace>
+    <Description>EAP Gateway性能测试</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\EAP.Gateway.Api\EAP.Gateway.Api.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 性能测试框架 -->
+    <PackageReference Include="NBomber" />
+    <PackageReference Include="BenchmarkDotNet" />
+    
+    <!-- 测试工具 -->
+    <PackageReference Include="FluentAssertions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="LoadTests\" />
+    <Folder Include="StressTests\" />
+    <Folder Include="EnduranceTests\" />
+  </ItemGroup>
+
+</Project>

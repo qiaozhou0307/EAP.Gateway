@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>EAP.Gateway.IntegrationTests</AssemblyName>
+    <RootNamespace>EAP.Gateway.IntegrationTests</RootNamespace>
+    <Description>EAP Gateway集成测试</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\EAP.Gateway.Api\EAP.Gateway.Api.csproj" />
+    <ProjectReference Include="..\..\src\EAP.Gateway.Worker\EAP.Gateway.Worker.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 测试框架 -->
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="coverlet.collector" />
+    
+    <!-- 集成测试 -->
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Testcontainers" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
+    <PackageReference Include="Testcontainers.Redis" />
+    <PackageReference Include="Testcontainers.Kafka" />
+    
+    <!-- 测试工具 -->
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Bogus" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Communications\" />
+    <Folder Include="Persistence\" />
+    <Folder Include="Messaging\" />
+    <Folder Include="Api\" />
+    <Folder Include="TestInfrastructure\" />
+  </ItemGroup>
+
+</Project>

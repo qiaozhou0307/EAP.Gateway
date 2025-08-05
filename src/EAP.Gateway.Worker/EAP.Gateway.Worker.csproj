@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <AssemblyName>EAP.Gateway.Worker</AssemblyName>
+    <RootNamespace>EAP.Gateway.Worker</RootNamespace>
+    <Description>EAP Gateway后台工作服务</Description>
+    <UserSecretsId>eap-gateway-worker-secrets</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\EAP.Gateway.Core\EAP.Gateway.Core.csproj" />
+    <ProjectReference Include="..\EAP.Gateway.Application\EAP.Gateway.Application.csproj" />
+    <ProjectReference Include="..\EAP.Gateway.Infrastructure\EAP.Gateway.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Worker服务 -->
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" />
+    
+    <!-- 日志 -->
+    <PackageReference Include="Serilog.Sinks.Console" />
+    <PackageReference Include="Serilog.Extensions.Hosting" />
+    
+    <!-- 监控 -->
+    <PackageReference Include="prometheus-net" />
+    <PackageReference Include="AspNetCore.HealthChecks.UI.Client" />
+    
+    <!-- 消息队列 -->
+    <PackageReference Include="Confluent.Kafka" />
+    <PackageReference Include="RabbitMQ.Client" />
+    <PackageReference Include="Serilog.Sinks.File" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Consumers\" />
+    <Folder Include="Configuration\" />
+  </ItemGroup>
+
+</Project>

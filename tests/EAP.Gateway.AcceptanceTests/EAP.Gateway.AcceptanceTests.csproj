@@ -1,0 +1,61 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>EAP.Gateway.AcceptanceTests</AssemblyName>
+    <RootNamespace>EAP.Gateway.AcceptanceTests</RootNamespace>
+    <Description>EAP Gateway验收测试</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\EAP.Gateway.Api\EAP.Gateway.Api.csproj" />
+    <ProjectReference Include="..\..\src\EAP.Gateway.Worker\EAP.Gateway.Worker.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 测试框架 -->
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="coverlet.collector" />
+    
+    <!-- BDD测试框架 -->
+    <PackageReference Include="SpecFlow" />
+    <PackageReference Include="SpecFlow.xUnit" />
+    <PackageReference Include="SpecFlow.Tools.MsBuild.Generation" />
+    
+    <!-- 集成测试支持 -->
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Testcontainers" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
+    <PackageReference Include="Testcontainers.Redis" />
+    <PackageReference Include="Testcontainers.Kafka" />
+    
+    <!-- 测试工具 -->
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Bogus" />
+    <PackageReference Include="WireMock.Net" />
+    
+    <!-- Selenium WebDriver -->
+    <PackageReference Include="Selenium.WebDriver" />
+    <PackageReference Include="Selenium.WebDriver.ChromeDriver" />
+    <PackageReference Include="Selenium.Support" />
+    
+    <!-- REST API测试 -->
+    <PackageReference Include="RestSharp" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Features\" />
+    <Folder Include="Scenarios\" />
+    <Folder Include="StepDefinitions\" />
+    <Folder Include="Hooks\" />
+    <Folder Include="Support\" />
+    <Folder Include="Drivers\" />
+    <Folder Include="PageObjects\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <SpecFlowFeatureFiles Include="Features\**\*.feature" />
+  </ItemGroup>
+
+</Project>

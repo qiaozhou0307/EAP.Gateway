@@ -1,0 +1,51 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>EAP.Gateway.UnitTests</AssemblyName>
+    <RootNamespace>EAP.Gateway.UnitTests</RootNamespace>
+    <Description>EAP Gateway单元测试</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\EAP.Gateway.Core\EAP.Gateway.Core.csproj" />
+    <ProjectReference Include="..\..\src\EAP.Gateway.Application\EAP.Gateway.Application.csproj" />
+    <ProjectReference Include="..\..\src\EAP.Gateway.Infrastructure\EAP.Gateway.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\EAP.Gateway.Api\EAP.Gateway.Api.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 测试框架 -->
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="coverlet.collector" />
+    
+    <!-- 测试工具 -->
+    <PackageReference Include="Moq" />
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Bogus" />
+    <PackageReference Include="AutoFixture" />
+    <PackageReference Include="AutoFixture.Xunit2" />
+    
+    <!-- 内存数据库 -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Core\Entities\" />
+    <Folder Include="Core\ValueObjects\" />
+    <Folder Include="Core\DomainServices\" />
+    <Folder Include="Core\Specifications\" />
+    <Folder Include="Application\Services\" />
+    <Folder Include="Application\Handlers\" />
+    <Folder Include="Application\Behaviors\" />
+    <Folder Include="Infrastructure\Repositories\" />
+    <Folder Include="Infrastructure\Communications\" />
+    <Folder Include="Infrastructure\Caching\" />
+    <Folder Include="Api\Controllers\" />
+    <Folder Include="TestHelpers\Builders\" />
+    <Folder Include="TestHelpers\Fixtures\" />
+    <Folder Include="TestHelpers\Mocks\" />
+  </ItemGroup>
+
+</Project>

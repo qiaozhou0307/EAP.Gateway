@@ -1,0 +1,68 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>EAP.Gateway.Infrastructure</AssemblyName>
+    <RootNamespace>EAP.Gateway.Infrastructure</RootNamespace>
+    <Description>EAP Gateway基础设施层，包含数据访问、消息队列、缓存和外部服务</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\EAP.Gateway.Core\EAP.Gateway.Core.csproj" />
+    <ProjectReference Include="..\EAP.Gateway.Application\EAP.Gateway.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 数据库 -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    
+    <!-- 缓存 -->
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" />
+    <PackageReference Include="StackExchange.Redis" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" />
+    
+    <!-- 消息队列 -->
+    <PackageReference Include="Confluent.Kafka" />
+    <PackageReference Include="RabbitMQ.Client" />
+    
+    <!-- SECS/GEM通信 -->
+    <PackageReference Include="Secs4Net" />
+    
+    <!-- 监控和健康检查 -->
+    <PackageReference Include="prometheus-net" />
+    <PackageReference Include="AspNetCore.HealthChecks.Redis" />
+    <PackageReference Include="AspNetCore.HealthChecks.Npgsql" />
+    <PackageReference Include="AspNetCore.HealthChecks.Kafka" />
+    
+    <!-- 日志 -->
+    <PackageReference Include="Serilog" />
+    <PackageReference Include="Serilog.Extensions.Hosting" />
+    
+    <!-- 安全 -->
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" />
+    
+    <!-- HTTP客户端 -->
+    <PackageReference Include="Microsoft.Extensions.Http" />
+    <PackageReference Include="Microsoft.Extensions.Http.Polly" />
+    <PackageReference Include="Polly" />
+    
+    <!-- 配置 -->
+    <PackageReference Include="Microsoft.Extensions.Configuration" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Persistence\Migrations\" />
+    <Folder Include="Messaging\RabbitMQ\" />
+    <Folder Include="Communications\Protocols\" />
+    <Folder Include="Logging\" />
+    <Folder Include="Monitoring\HealthChecks\" />
+    <Folder Include="Security\Authentication\" />
+    <Folder Include="Security\Authorization\" />
+    <Folder Include="Security\Encryption\" />
+    <Folder Include="External\Notifications\" />
+    <Folder Include="External\Integration\" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>EAP.Gateway.Core</AssemblyName>
+    <RootNamespace>EAP.Gateway.Core</RootNamespace>
+    <Description>EAP Gateway领域核心，包含DDD聚合、实体、值对象和领域服务</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="CommunityToolkit.Diagnostics" />
+    <PackageReference Include="System.ComponentModel.Annotations" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <Folder Include="Aggregates\MessageAggregate\" />
+    <Folder Include="Aggregates\AlarmAggregate\" />
+    <Folder Include="DomainServices\" />
+    <Folder Include="Specifications\" />
+    <Folder Include="Extensions\Recipe\" />
+    <Folder Include="Extensions\RemoteControl\" />
+    <Folder Include="Constants\" />
+  </ItemGroup>
+
+</Project>

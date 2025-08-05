@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>EAP.Gateway.Application</AssemblyName>
+    <RootNamespace>EAP.Gateway.Application</RootNamespace>
+    <Description>EAP Gateway应用服务层，包含CQRS命令查询、应用服务和DTO</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\EAP.Gateway.Core\EAP.Gateway.Core.csproj" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="MediatR" />
+    
+    <PackageReference Include="AutoMapper" />
+    <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" />
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Commands\Data\" />
+    <Folder Include="Commands\Message\" />
+    <Folder Include="Queries\Alarm\" />
+    <Folder Include="Validators\CommandValidators\" />
+    <Folder Include="Validators\QueryValidators\" />
+  </ItemGroup>
+
+</Project>
