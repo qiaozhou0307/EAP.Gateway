@@ -63,6 +63,7 @@
     <Folder Include="Security\Encryption\" />
     <Folder Include="External\Notifications\" />
     <Folder Include="External\Integration\" />
+    <Folder Include="HealthChecks\" />
   </ItemGroup>
 
 </Project>

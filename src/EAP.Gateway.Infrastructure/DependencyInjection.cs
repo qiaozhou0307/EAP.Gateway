@@ -1,3 +1,4 @@
+// src/EAP.Gateway.Infrastructure/DependencyInjection.cs
 using EAP.Gateway.Core.Aggregates.EquipmentAggregate;
 using EAP.Gateway.Core.Models;
 using EAP.Gateway.Core.Repositories;
@@ -15,12 +16,13 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Secs4Net;
 using StackExchange.Redis;
 
 namespace EAP.Gateway.Infrastructure;
 
 /// <summary>
-/// 基础设施层依赖注入配置（最终修复版本）
+/// 基础设施层依赖注入配置（生命周期冲突修复版本）
 /// </summary>
 public static class DependencyInjection
 {
@@ -36,53 +38,80 @@ public static class DependencyInjection
         AddCaching(services, configuration);
         AddRepositories(services);
         AddMessaging(services, configuration);
-        AddSecsGemServices(services);
+        AddSecsGemServices(services, configuration);
         AddHealthChecks(services, configuration);
-
-
         AddDicingMachineServices(services, configuration);
+
         return services;
     }
 
     /// <summary>
-    /// 添加数据持久化服务
+    /// 修复：添加数据持久化服务 - 解决DbContext生命周期问题
     /// </summary>
     private static void AddPersistence(IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
     {
+        var connectionString = configuration.GetConnectionString("DefaultConnection")
+            ?? throw new InvalidOperationException("Database connection string 'DefaultConnection' not found.");
+
+        // 1. 注册标准DbContext (Scoped) - 用于常规Web请求
         services.AddDbContext<EapGatewayDbContext>(options =>
         {
-            var connectionString = configuration.GetConnectionString("DefaultConnection");
-
-            options.UseNpgsql(connectionString, npgsqlOptions =>
-            {
-                npgsqlOptions.MigrationsAssembly(typeof(EapGatewayDbContext).Assembly.FullName);
-                npgsqlOptions.EnableRetryOnFailure(
-                    maxRetryCount: 3,
-                    maxRetryDelay: TimeSpan.FromSeconds(30),
-                    errorCodesToAdd: null);
-            });
-
-            options.EnableSensitiveDataLogging(environment.IsDevelopment());
-            options.EnableServiceProviderCaching();
-            options.EnableDetailedErrors(environment.IsDevelopment());
-            options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
+            ConfigureDbContextOptions(options, connectionString, environment);
         });
 
+        // 2. 注册DbContextFactory (Singleton) - 用于后台服务和单例服务
+        services.AddDbContextFactory<EapGatewayDbContext>(options =>
+        {
+            ConfigureDbContextOptions(options, connectionString, environment);
+        });
+
+        // 3. 注册仓储工厂模式 - 解决单例服务访问Scoped仓储的问题
+        services.AddSingleton<IRepositoryFactory, RepositoryFactory>();
+
+        // 4. 数据库初始化器保持Scoped
         services.AddScoped<IDatabaseInitializer, DatabaseInitializer>();
     }
 
     /// <summary>
-    /// 添加缓存服务（最终修复版本）
+    /// 统一的DbContext配置方法
+    /// </summary>
+    private static void ConfigureDbContextOptions(DbContextOptionsBuilder options, string connectionString, IHostEnvironment environment)
+    {
+        options.UseNpgsql(connectionString, npgsqlOptions =>
+        {
+            npgsqlOptions.MigrationsAssembly(typeof(EapGatewayDbContext).Assembly.FullName);
+            npgsqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 3,
+                maxRetryDelay: TimeSpan.FromSeconds(30),
+                errorCodesToAdd: null);
+        });
+
+        // 开发环境特定配置
+        if (environment.IsDevelopment())
+        {
+            options.EnableSensitiveDataLogging();
+            options.EnableDetailedErrors();
+        }
+
+        options.EnableServiceProviderCaching();
+        options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
+    }
+
+    /// <summary>
+    /// 修复：添加缓存服务 - 确保Redis连接的正确生命周期
     /// </summary>
     private static void AddCaching(IServiceCollection services, IConfiguration configuration)
     {
         var redisConnectionString = configuration.GetConnectionString("Redis");
         if (string.IsNullOrWhiteSpace(redisConnectionString))
         {
-            throw new InvalidOperationException("Redis连接字符串未配置");
+            // 如果Redis未配置，使用内存缓存作为后备
+            services.AddMemoryCache();
+            services.AddScoped<IDeviceStatusCacheService, MemoryDeviceStatusCacheService>();
+            return;
         }
 
-        // 注册 StackExchange.Redis IConnectionMultiplexer
+        // Redis连接注册为单例
         services.AddSingleton<IConnectionMultiplexer>(provider =>
         {
             var logger = provider.GetRequiredService<ILogger<IConnectionMultiplexer>>();
@@ -96,6 +125,7 @@ public static class DependencyInjection
 
             var multiplexer = ConnectionMultiplexer.Connect(options);
 
+            // 连接事件监听
             multiplexer.ConnectionFailed += (_, args) =>
             {
                 logger.LogError("Redis连接失败: {EndPoint}, {FailureType}", args.EndPoint, args.FailureType);
@@ -109,29 +139,35 @@ public static class DependencyInjection
             return multiplexer;
         });
 
-        // 注册 Microsoft.Extensions.Caching.Distributed
+        // 分布式缓存注册
         services.AddStackExchangeRedisCache(options =>
         {
             options.Configuration = redisConnectionString;
             options.InstanceName = "EapGateway";
         });
 
-        // 注册Redis服务
+        // Redis服务注册
         services.AddSingleton<IRedisService, RedisService>();
-        services.AddScoped<IDeviceStatusCacheService, DeviceStatusCacheService>();
+        services.AddScoped<IDeviceStatusCacheService, RedisDeviceStatusCacheService>();
+
+        // 内存缓存作为二级缓存
         services.AddMemoryCache();
     }
 
     /// <summary>
-    /// 添加仓储服务
+    /// 修复：添加仓储服务 - 明确生命周期管理
     /// </summary>
     private static void AddRepositories(IServiceCollection services)
     {
+        // 标准仓储注册为Scoped - 与DbContext生命周期匹配
         services.AddScoped<IEquipmentRepository, EquipmentRepository>();
+        services.AddScoped<IAlarmRepository, AlarmRepository>();
+        services.AddScoped<IDataVariableRepository, DataVariableRepository>();
+        services.AddScoped<IMessageRepository, MessageRepository>();
     }
 
     /// <summary>
-    /// 添加消息队列服务
+    /// 修复：添加消息队列服务 - 优化Kafka生产者生命周期
     /// </summary>
     private static void AddMessaging(IServiceCollection services, IConfiguration configuration)
     {
@@ -151,18 +187,55 @@ public static class DependencyInjection
         }
 
         services.Configure<KafkaConfig>(kafkaSection);
+
+        // Kafka生产者注册为单例 - 提高性能并避免频繁创建连接
         services.AddSingleton<IKafkaProducerService, KafkaProducerService>();
+
+        // RabbitMQ配置（如果需要）
+        var rabbitMQSection = configuration.GetSection("RabbitMQ");
+        if (rabbitMQSection.Exists())
+        {
+            services.Configure<RabbitMQConfig>(rabbitMQSection);
+            services.AddSingleton<IRabbitMQService, RabbitMQService>();
+        }
     }
 
     /// <summary>
-    /// 添加 SECS/GEM 通信服务
+    /// 修复：添加SECS/GEM通信服务 - 解决生命周期冲突
     /// </summary>
-    private static void AddSecsGemServices(IServiceCollection services)
+    private static void AddSecsGemServices(IServiceCollection services, IConfiguration configuration)
     {
-        services.AddTransient<IHsmsClient, HsmsClient>();
-        services.AddTransient<ISecsDeviceService, SecsDeviceService>();
+        // 配置选项
+        services.Configure<SecsGemOptions>(configuration.GetSection("SecsGem"));
+
+        // 工厂服务注册为单例 - 用于创建设备服务实例
         services.AddSingleton<ISecsDeviceServiceFactory, SecsDeviceServiceFactory>();
+        services.AddSingleton<IHsmsClientFactory, HsmsClientFactory>();
+
+        // 设备服务注册为瞬时 - 每个设备连接独立实例，避免状态冲突
+        services.AddTransient<ISecsDeviceService, SecsDeviceService>();
+        services.AddTransient<IHsmsClient, HsmsClient>();
+
+        // 设备管理器注册为单例 - 管理所有设备连接
         services.AddSingleton<ISecsDeviceManager, SecsDeviceManager>();
+    }
+
+    /// <summary>
+    /// 修复：添加裂片机连接管理服务 - 分离HostedService职责
+    /// </summary>
+    private static void AddDicingMachineServices(IServiceCollection services, IConfiguration configuration)
+    {
+        // 配置选项
+        services.Configure<ConnectionManagerOptions>(configuration.GetSection("ConnectionManager"));
+
+        // 连接管理器注册为单例 - 管理多设备连接状态
+        services.AddSingleton<IMultiDicingMachineConnectionManager, MultiDicingMachineConnectionManager>();
+
+        // HostedService单独注册 - 避免与业务服务的生命周期冲突
+        services.AddHostedService<DicingMachineConnectionHostedService>();
+
+        // 连接状态监控服务
+        services.AddSingleton<IConnectionMonitoringService, ConnectionMonitoringService>();
     }
 
     /// <summary>
@@ -195,69 +268,10 @@ public static class DependencyInjection
                 options.BootstrapServers = kafkaServers;
             }, name: "kafka", tags: new[] { "ready", "messaging" });
         }
-    }
 
-
-    /// <summary>
-    /// 添加裂片机连接管理服务
-    /// </summary>
-    public static IServiceCollection AddDicingMachineServices(
-        this IServiceCollection services,
-        IConfiguration configuration)
-    {
-        // 注册多设备连接管理器
-        services.AddSingleton<IMultiDicingMachineConnectionManager, MultiDicingMachineConnectionManager>();
-
-        // 注册设备服务工厂（如果还没注册）
-        services.AddSingleton<ISecsDeviceServiceFactory, SecsDeviceServiceFactory>();
-
-        // 注册健康检查
-        services.AddSingleton<DicingMachineHealthCheck>();
-        services.AddHealthChecks()
-            .AddTypeActivatedCheck<DicingMachineHealthCheck>("dicing-machines");
-
-        // 验证并绑定配置
-        var dicingMachineSection = configuration.GetSection("DicingMachines");
-        if (dicingMachineSection.Exists())
-        {
-            services.Configure<DicingMachinesOptions>(dicingMachineSection);
-
-            // 验证配置有效性
-            var configs = dicingMachineSection.GetSection("Devices").Get<DicingMachineConfig[]>();
-            if (configs != null)
-            {
-                foreach (var config in configs)
-                {
-                    var (isValid, errors) = config.Validate();
-                    if (!isValid)
-                    {
-                        throw new InvalidOperationException($"裂片机配置无效 [{config.Name}]: {string.Join(", ", errors)}");
-                    }
-                }
-            }
-        }
-
-        return services;
-    }
-
-    /// <summary>
-    /// 裂片机配置选项
-    /// </summary>
-    public class DicingMachinesOptions
-    {
-        public DicingMachineConfig[] Devices { get; set; } = Array.Empty<DicingMachineConfig>();
-        public GlobalDicingMachineSettings GlobalSettings { get; set; } = new();
-    }
-
-    /// <summary>
-    /// 全局裂片机设置
-    /// </summary>
-    public class GlobalDicingMachineSettings
-    {
-        public int MaxConcurrentConnections { get; set; } = 5;
-        public TimeSpan DefaultConnectionTimeout { get; set; } = TimeSpan.FromSeconds(30);
-        public bool AutoReconnectEnabled { get; set; } = true;
-        public TimeSpan MonitoringInterval { get; set; } = TimeSpan.FromMinutes(1);
-        public TimeSpan HealthCheckInterval { get; set; } = TimeSpan.FromMinutes(2);
+        // 自定义设备连接健康检查
+        healthChecksBuilder.AddTypeActivatedCheck<DeviceConnectionHealthCheck>(
+            "device_connections",
+            tags: new[] { "ready", "device" });
     }
 }
