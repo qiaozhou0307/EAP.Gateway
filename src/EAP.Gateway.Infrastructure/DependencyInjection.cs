@@ -99,17 +99,20 @@ public static class DependencyInjection
         options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
     }
 
+    // src/EAP.Gateway.Infrastructure/DependencyInjection.cs (修复缓存部分)
     /// <summary>
-    /// 修复：添加缓存服务 - 确保Redis连接的正确生命周期
+    /// 修复：添加缓存服务 - 解决IRedisService重复定义问题
     /// </summary>
     private static void AddCaching(IServiceCollection services, IConfiguration configuration)
     {
         var redisConnectionString = configuration.GetConnectionString("Redis");
+
         if (string.IsNullOrWhiteSpace(redisConnectionString))
         {
             // 如果Redis未配置，使用内存缓存作为后备
             services.AddMemoryCache();
             services.AddScoped<IDeviceStatusCacheService, MemoryDeviceStatusCacheService>();
+            services.AddSingleton<Core.Repositories.IRedisService, NullRedisService>(); // ✅ 明确使用Core层接口
             return;
         }
 
@@ -148,9 +151,9 @@ public static class DependencyInjection
             options.InstanceName = "EapGateway";
         });
 
-        // Redis服务注册
-        services.AddSingleton<IRedisService, RedisService>();
-        services.AddScoped<IDeviceStatusCacheService, RedisDeviceStatusCacheService>();
+        // ✅ 修复：明确使用Core层的IRedisService接口
+        services.AddSingleton<Core.Repositories.IRedisService, RedisService>();
+        services.AddScoped<IDeviceStatusCacheService, DeviceStatusCacheService>();
 
         // 内存缓存作为二级缓存
         services.AddMemoryCache();

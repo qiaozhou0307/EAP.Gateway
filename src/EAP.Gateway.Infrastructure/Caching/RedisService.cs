@@ -1,35 +1,25 @@
-// 文件路径: src/EAP.Gateway.Infrastructure/Caching/RedisService.cs
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using EAP.Gateway.Core.Aggregates.EquipmentAggregate;
-using EAP.Gateway.Core.Repositories;
-using EAP.Gateway.Core.Services;
-using EAP.Gateway.Infrastructure.Communications.SecsGem;
-using EAP.Gateway.Infrastructure.Configuration;
-using EAP.Gateway.Infrastructure.Messaging.Kafka;
-using EAP.Gateway.Infrastructure.Persistence;
-using EAP.Gateway.Infrastructure.Persistence.Contexts;
-using EAP.Gateway.Infrastructure.Persistence.Repositories;
+using EAP.Gateway.Core.Repositories; // ✅ 只引用Core层接口
 using Microsoft.Extensions.Caching.Distributed;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 
 namespace EAP.Gateway.Infrastructure.Caching;
 
 /// <summary>
-/// Redis缓存服务实现（生产就绪版本）
-/// 支持FR-DAM-003需求：实时数据缓存(Redis)
+/// Redis缓存服务实现
+/// 实现Core.Repositories.IRedisService接口
 /// </summary>
-public sealed class RedisService : IRedisService, IDisposable
+public sealed class RedisService : Core.Repositories.IRedisService, IDisposable
 {
     private readonly IDistributedCache _distributedCache;
     private readonly IConnectionMultiplexer _connectionMultiplexer;
     private readonly IDatabase _database;
     private readonly ILogger<RedisService> _logger;
     private readonly JsonSerializerOptions _jsonOptions;
+
+    public bool IsConnected => _connectionMultiplexer.IsConnected;
 
     public RedisService(
         IDistributedCache distributedCache,
@@ -50,7 +40,7 @@ public sealed class RedisService : IRedisService, IDisposable
         };
     }
 
-    #region IRedisService Implementation
+    #region Core层接口实现
 
     public async Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default) where T : class
     {
@@ -96,14 +86,9 @@ public sealed class RedisService : IRedisService, IDisposable
             await _distributedCache.SetStringAsync(key, serializedValue, options, cancellationToken);
             return true;
         }
-        catch (JsonException jsonEx)
-        {
-            _logger.LogError(jsonEx, "Redis数据序列化失败, Key: {Key}, Type: {Type}", key, typeof(T).Name);
-            return false;
-        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "向Redis设置数据失败, Key: {Key}", key);
+            _logger.LogError(ex, "Redis数据设置失败, Key: {Key}, Type: {Type}", key, typeof(T).Name);
             return false;
         }
     }
@@ -119,7 +104,7 @@ public sealed class RedisService : IRedisService, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "从Redis删除数据失败, Key: {Key}", key);
+            _logger.LogError(ex, "Redis数据删除失败, Key: {Key}", key);
             return false;
         }
     }
@@ -130,12 +115,11 @@ public sealed class RedisService : IRedisService, IDisposable
 
         try
         {
-            var exists = await _database.KeyExistsAsync(key);
-            return exists;
+            return await _database.KeyExistsAsync(key);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "检查Redis键是否存在失败, Key: {Key}", key);
+            _logger.LogError(ex, "Redis键存在检查失败, Key: {Key}", key);
             return false;
         }
     }
@@ -144,32 +128,32 @@ public sealed class RedisService : IRedisService, IDisposable
     {
         ArgumentNullException.ThrowIfNull(keys);
 
-        var keyList = keys.ToList();
-        var result = new Dictionary<string, T?>();
-
-        if (!keyList.Any())
+        var keysList = keys.ToList();
+        if (!keysList.Any())
         {
-            return result;
+            return new Dictionary<string, T?>();
         }
 
-        // 简化的并发获取
-        var tasks = keyList.Select(async key =>
-        {
-            var value = await GetAsync<T>(key, cancellationToken);
-            return new { Key = key, Value = value };
-        });
+        var result = new Dictionary<string, T?>();
 
         try
         {
-            var results = await Task.WhenAll(tasks);
-            foreach (var item in results)
+            var tasks = keysList.Select(async key =>
             {
-                result[item.Key] = item.Value;
+                var value = await GetAsync<T>(key, cancellationToken);
+                return new KeyValuePair<string, T?>(key, value);
+            });
+
+            var results = await Task.WhenAll(tasks);
+
+            foreach (var kvp in results)
+            {
+                result[kvp.Key] = kvp.Value;
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "批量获取Redis数据失败");
+            _logger.LogError(ex, "Redis批量获取失败, Keys: {Keys}", string.Join(", ", keysList));
         }
 
         return result;
@@ -188,9 +172,6 @@ public sealed class RedisService : IRedisService, IDisposable
         await Task.WhenAll(tasks);
     }
 
-    /// <summary>
-    /// 实现GetKeysAsync方法 - 核心修复
-    /// </summary>
     public async Task<IEnumerable<string>> GetKeysAsync(string pattern, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(pattern);
@@ -200,7 +181,6 @@ public sealed class RedisService : IRedisService, IDisposable
             var server = GetAvailableServer();
             var keys = new List<string>();
 
-            // 使用SCAN命令，性能更好且不会阻塞Redis
             await foreach (var key in server.KeysAsync(
                 database: _database.Database,
                 pattern: pattern,
@@ -214,7 +194,6 @@ public sealed class RedisService : IRedisService, IDisposable
                 keys.Add(key.ToString());
             }
 
-            _logger.LogDebug("Redis模式匹配完成, Pattern: {Pattern}, Found: {Count}", pattern, keys.Count);
             return keys;
         }
         catch (Exception ex)
@@ -226,11 +205,97 @@ public sealed class RedisService : IRedisService, IDisposable
 
     #endregion
 
+    #region Infrastructure层扩展方法实现
+
+    public async Task<string?> GetStringAsync(string key, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+
+        try
+        {
+            return await _distributedCache.GetStringAsync(key, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "从Redis获取字符串失败, Key: {Key}", key);
+            return null;
+        }
+    }
+
+    public async Task SetStringAsync(string key, string value, TimeSpan? expiry = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        ArgumentNullException.ThrowIfNull(value);
+
+        try
+        {
+            var options = new DistributedCacheEntryOptions();
+            if (expiry.HasValue)
+            {
+                options.SetAbsoluteExpiration(expiry.Value);
+            }
+
+            await _distributedCache.SetStringAsync(key, value, options, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Redis字符串设置失败, Key: {Key}", key);
+        }
+    }
+
+    public async Task<bool> RemoveAsync(string key, CancellationToken cancellationToken = default)
+    {
+        return await DeleteAsync(key, cancellationToken); // 复用DeleteAsync实现
+    }
+
+    public async Task<long> IncrementAsync(string key, long value = 1, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+
+        try
+        {
+            return await _database.StringIncrementAsync(key, value);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Redis递增操作失败, Key: {Key}, Value: {Value}", key, value);
+            return 0;
+        }
+    }
+
+    public async Task<long> DecrementAsync(string key, long value = 1, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+
+        try
+        {
+            return await _database.StringDecrementAsync(key, value);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Redis递减操作失败, Key: {Key}, Value: {Value}", key, value);
+            return 0;
+        }
+    }
+
+    public async Task<bool> PingAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var latency = await _database.PingAsync();
+            return latency != TimeSpan.Zero;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Redis Ping失败");
+            return false;
+        }
+    }
+
+    #endregion
+
     #region Private Methods
 
-    /// <summary>
-    /// 获取可用的Redis服务器实例
-    /// </summary>
     private IServer GetAvailableServer()
     {
         var endpoints = _connectionMultiplexer.GetEndPoints();
@@ -244,7 +309,7 @@ public sealed class RedisService : IRedisService, IDisposable
         foreach (var endpoint in endpoints)
         {
             var server = _connectionMultiplexer.GetServer(endpoint);
-            if (server.IsConnected && !server.IsReplica) // 修复：使用IsReplica
+            if (server.IsConnected && !server.IsReplica)
             {
                 return server;
             }
@@ -269,10 +334,8 @@ public sealed class RedisService : IRedisService, IDisposable
 
     public void Dispose()
     {
-        // IConnectionMultiplexer由DI容器管理
         GC.SuppressFinalize(this);
     }
 
     #endregion
 }
-

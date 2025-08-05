@@ -2,44 +2,44 @@ using EAP.Gateway.Core.Aggregates.EquipmentAggregate;
 using EAP.Gateway.Core.Models;
 using EAP.Gateway.Core.Repositories;
 using EAP.Gateway.Core.ValueObjects;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
 namespace EAP.Gateway.Infrastructure.Caching;
 
 /// <summary>
-/// Redis实现的设备状态缓存服务
-/// 实现Core.Repositories.IDeviceStatusCacheService接口
+/// 内存缓存实现的设备状态缓存服务
+/// 当Redis不可用时的备用方案
 /// </summary>
-public class DeviceStatusCacheService : IDeviceStatusCacheService
+public class MemoryDeviceStatusCacheService : Core.Repositories.IDeviceStatusCacheService
 {
-    private readonly IRedisService _redisService;
-    private readonly ILogger<DeviceStatusCacheService> _logger;
+    private readonly IMemoryCache _memoryCache;
+    private readonly ILogger<MemoryDeviceStatusCacheService> _logger;
     private static readonly TimeSpan _defaultExpiration = TimeSpan.FromMinutes(10);
 
-    public DeviceStatusCacheService(IRedisService redisService, ILogger<DeviceStatusCacheService> logger)
+    public MemoryDeviceStatusCacheService(IMemoryCache memoryCache, ILogger<MemoryDeviceStatusCacheService> logger)
     {
-        _redisService = redisService ?? throw new ArgumentNullException(nameof(redisService));
+        _memoryCache = memoryCache ?? throw new ArgumentNullException(nameof(memoryCache));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
-
 
     public async Task<EquipmentStatus?> GetEquipmentStatusAsync(EquipmentId equipmentId, CancellationToken cancellationToken = default)
     {
         try
         {
             var key = GetStatusCacheKey(equipmentId);
-            var status = await _redisService.GetAsync<EquipmentStatus>(key, cancellationToken);
-
-            if (status != null)
+            if (_memoryCache.TryGetValue(key, out EquipmentStatus? status))
             {
-                _logger.LogDebug("从Redis缓存获取设备状态: {EquipmentId}", equipmentId.Value);
+                _logger.LogDebug("从内存缓存获取设备状态: {EquipmentId}", equipmentId.Value);
+                return status;
             }
 
-            return status;
+            _logger.LogDebug("内存缓存中未找到设备状态: {EquipmentId}", equipmentId.Value);
+            return null;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "从Redis缓存获取设备状态失败: {EquipmentId}", equipmentId.Value);
+            _logger.LogError(ex, "从内存缓存获取设备状态失败: {EquipmentId}", equipmentId.Value);
             return null;
         }
     }
@@ -49,14 +49,14 @@ public class DeviceStatusCacheService : IDeviceStatusCacheService
         try
         {
             var key = GetStatusCacheKey(status.EquipmentId);
-            await _redisService.SetAsync(key, status, _defaultExpiration, cancellationToken);
+            _memoryCache.Set(key, status, _defaultExpiration);
 
-            _logger.LogDebug("设备状态已写入Redis缓存: {EquipmentId}", status.EquipmentId.Value);
+            _logger.LogDebug("设备状态已写入内存缓存: {EquipmentId}", status.EquipmentId.Value);
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "设备状态写入Redis缓存失败: {EquipmentId}", status.EquipmentId.Value);
+            _logger.LogError(ex, "设备状态写入内存缓存失败: {EquipmentId}", status.EquipmentId.Value);
             return false;
         }
     }
@@ -66,18 +66,18 @@ public class DeviceStatusCacheService : IDeviceStatusCacheService
         try
         {
             var key = GetDataVariablesCacheKey(equipmentId);
-            var dataVariables = await _redisService.GetAsync<DataVariables>(key, cancellationToken);
-
-            if (dataVariables != null)
+            if (_memoryCache.TryGetValue(key, out DataVariables? dataVariables))
             {
-                _logger.LogDebug("从Redis缓存获取数据变量: {EquipmentId}", equipmentId.Value);
+                _logger.LogDebug("从内存缓存获取数据变量: {EquipmentId}", equipmentId.Value);
+                return dataVariables;
             }
 
-            return dataVariables;
+            _logger.LogDebug("内存缓存中未找到数据变量: {EquipmentId}", equipmentId.Value);
+            return null;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "从Redis缓存获取数据变量失败: {EquipmentId}", equipmentId.Value);
+            _logger.LogError(ex, "从内存缓存获取数据变量失败: {EquipmentId}", equipmentId.Value);
             return null;
         }
     }
@@ -87,14 +87,14 @@ public class DeviceStatusCacheService : IDeviceStatusCacheService
         try
         {
             var key = GetDataVariablesCacheKey(dataVariables.EquipmentId);
-            await _redisService.SetAsync(key, dataVariables, _defaultExpiration, cancellationToken);
+            _memoryCache.Set(key, dataVariables, _defaultExpiration);
 
-            _logger.LogDebug("数据变量已写入Redis缓存: {EquipmentId}", dataVariables.EquipmentId.Value);
+            _logger.LogDebug("数据变量已写入内存缓存: {EquipmentId}", dataVariables.EquipmentId.Value);
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "数据变量写入Redis缓存失败: {EquipmentId}", dataVariables.EquipmentId.Value);
+            _logger.LogError(ex, "数据变量写入内存缓存失败: {EquipmentId}", dataVariables.EquipmentId.Value);
             return false;
         }
     }
@@ -114,7 +114,7 @@ public class DeviceStatusCacheService : IDeviceStatusCacheService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "更新Redis缓存中的数据变量失败: {EquipmentId}, 变量ID: {VariableId}", equipmentId.Value, variableId);
+            _logger.LogError(ex, "更新内存缓存中的数据变量失败: {EquipmentId}, 变量ID: {VariableId}", equipmentId.Value, variableId);
             return false;
         }
     }
@@ -134,7 +134,7 @@ public class DeviceStatusCacheService : IDeviceStatusCacheService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "批量更新Redis缓存中的数据变量失败: {EquipmentId}", equipmentId.Value);
+            _logger.LogError(ex, "批量更新内存缓存中的数据变量失败: {EquipmentId}", equipmentId.Value);
             return false;
         }
     }
@@ -146,25 +146,15 @@ public class DeviceStatusCacheService : IDeviceStatusCacheService
             var statusKey = GetStatusCacheKey(equipmentId);
             var dataKey = GetDataVariablesCacheKey(equipmentId);
 
-            var tasks = new[]
-            {
-                _redisService.RemoveAsync(statusKey, cancellationToken),
-                _redisService.RemoveAsync(dataKey, cancellationToken)
-            };
+            _memoryCache.Remove(statusKey);
+            _memoryCache.Remove(dataKey);
 
-            var results = await Task.WhenAll(tasks);
-            var success = results.All(r => r);
-
-            if (success)
-            {
-                _logger.LogInformation("设备缓存已从Redis中清除: {EquipmentId}", equipmentId.Value);
-            }
-
-            return success;
+            _logger.LogInformation("设备缓存已从内存中清除: {EquipmentId}", equipmentId.Value);
+            return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "从Redis缓存清除设备缓存失败: {EquipmentId}", equipmentId.Value);
+            _logger.LogError(ex, "从内存缓存清除设备缓存失败: {EquipmentId}", equipmentId.Value);
             return false;
         }
     }
@@ -173,25 +163,14 @@ public class DeviceStatusCacheService : IDeviceStatusCacheService
     {
         try
         {
-            // 使用通配符模式获取所有设备状态缓存键
-            var pattern = "equipment:status:*";
-            var keys = await _redisService.GetKeysAsync(pattern, cancellationToken);
-
-            if (!keys.Any())
-            {
-                _logger.LogInformation("Redis缓存中未找到任何设备状态");
-                return Enumerable.Empty<EquipmentStatus>();
-            }
-
-            var allStatus = await _redisService.GetMultipleAsync<EquipmentStatus>(keys, cancellationToken);
-            var validStatus = allStatus.Values.Where(s => s != null).Cast<EquipmentStatus>();
-
-            _logger.LogDebug("从Redis缓存获取到 {Count} 个设备状态", validStatus.Count());
-            return validStatus;
+            // 内存缓存没有像Redis那样的pattern搜索功能
+            // 这里返回空集合，实际使用中可以考虑维护一个设备ID列表
+            _logger.LogWarning("内存缓存实现不支持获取所有设备状态，返回空集合");
+            return Enumerable.Empty<EquipmentStatus>();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "从Redis缓存获取所有设备状态时发生异常");
+            _logger.LogError(ex, "从内存缓存获取所有设备状态时发生异常");
             return Enumerable.Empty<EquipmentStatus>();
         }
     }

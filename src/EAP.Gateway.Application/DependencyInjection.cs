@@ -41,7 +41,7 @@ public static class DependencyInjection
             cfg.AddProfile<MessageMappingProfile>();
         });
 
-        // 应用服务注册
+        // 应用服务注册看
         AddApplicationServices(services);
 
         return services;
